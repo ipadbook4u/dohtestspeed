@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>นำส่งรายงานส่งมอบ</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+:root{color-scheme:light;--bg:#f5f6f8;--card:#fff;--tx:#1d2330;--mut:#667085;--bd:#d9dde5;--pri:#4b3fbf;--ok:#1f8a4c;--dan:#c43d3d;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#14161b;--card:#1e2128;--tx:#eceef3;--mut:#9aa2b1;--bd:#363b46;--pri:#8f86ff;--ok:#4cc27f;--dan:#ef7b7b}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#14161b;--card:#1e2128;--tx:#eceef3;--mut:#9aa2b1;--bd:#363b46;--pri:#8f86ff;--ok:#4cc27f;--dan:#ef7b7b}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:"Sarabun","Noto Sans Thai",system-ui,sans-serif;line-height:1.5}
+main{max-width:720px;margin:0 auto;padding:16px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+h1{font-size:1.3rem;margin:0 0 4px}
+.sub{color:var(--mut);font-size:.9rem;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:14px}
+.bar{height:8px;background:var(--bd);border-radius:6px;overflow:hidden;margin:8px 0 12px}
+.bar i{display:block;height:100%;background:var(--pri);transition:width .3s}
+.step{font-weight:700;font-size:1.1rem}
+.hint{color:var(--mut);font-size:.9rem;margin:2px 0 12px}
+.req{color:var(--dan);font-weight:600}
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:2px dashed var(--bd);border-radius:12px;padding:28px 12px;text-align:center;cursor:pointer;color:var(--mut)}
+.drop:hover{border-color:var(--pri)}
+.drop b{color:var(--pri);font-size:1.05rem}
+input[type=file]{display:none}
+button{font:inherit;border:0;border-radius:10px;padding:12px 16px;cursor:pointer;background:var(--pri);color:#fff;font-weight:600;width:100%}
+button.sec{background:transparent;color:var(--tx);border:1px solid var(--bd)}
+button.ico{width:auto;padding:6px 10px;background:transparent;color:var(--mut);border:1px solid var(--bd)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:10px;margin-top:12px}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
+.th{position:relative;border:1px solid var(--bd);border-radius:10px;overflow:hidden;background:var(--bg)}
+.th img{width:100%;height:90px;object-fit:cover;display:block}
+.th span{display:block;font-size:.75rem;padding:3px 6px;color:var(--mut)}
+.th button{position:absolute;top:4px;right:4px;width:26px;height:26px;padding:0;border-radius:50%;background:var(--dan);font-size:14px;line-height:1}
+input[type=text],input[type=password],select{width:100%;font:inherit;padding:10px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx)}
+select:disabled{opacity:.5}
+label{font-size:.9rem;color:var(--mut);display:block;margin:10px 0 4px}
+.msg{font-size:.9rem;margin-top:10px;color:var(--mut)}
+.msg.ok{color:var(--ok)}.msg.err{color:var(--dan)}
+.finish{background:var(--ok)}
+.chip{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--bd);border-radius:12px;padding:8px 12px;margin-bottom:14px;font-size:.95rem}
+.chip button{width:auto;padding:4px 10px;font-size:.85rem}
+dialog{border:0;border-radius:16px;padding:24px;max-width:420px;width:calc(100% - 32px);background:var(--card);color:var(--tx);text-align:center}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+dialog .big{font-size:2.6rem}
+dialog h2{font-size:1.15rem;margin:8px 0}
+</style>
+</head>
+<body>
+<main>
+<div class="top">
+  <div><h1>นำส่งรายงานส่งมอบ</h1>
+  <div class="sub">เลือกหน่วยงาน → อัปโหลดภาพตามขั้นตอน → นำส่งรายงาน</div></div>
+</div>
+
+<div class="card" id="selCard">
+  <div class="step">เลือกหน่วยงาน</div>
+  <div class="hint">เลือกจังหวัดก่อน แล้วเลือกหน่วยงาน</div>
+  <label for="selProv">จังหวัด <span class="req">*</span></label>
+  <select id="selProv"></select>
+  <label for="selAgency">หน่วยงาน <span class="req">*</span></label>
+  <select id="selAgency" disabled></select>
+  <div class="msg" id="selMsg"></div>
+  <button id="selNext" style="margin-top:12px" disabled>ถัดไป: อัปโหลดภาพ</button>
+</div>
+
+
+<div class="card" id="stepCard" hidden>
+  <div class="chip" id="chip" hidden><span id="chipTxt"></span><button class="sec" id="chipChg">เปลี่ยน</button></div>
+  <div class="step" id="stepTitle"></div>
+  <div class="bar"><i id="barFill"></i></div>
+  <div class="hint" id="stepHint"></div>
+  <label class="drop" id="drop" style="margin:0">
+    <span style="font-size:2rem">📤</span>
+    <b>แตะเพื่อเลือกไฟล์</b>
+    <span id="acceptTxt"></span>
+    <input type="file" id="file">
+  </label>
+  <div class="msg" id="status"></div>
+  <button class="finish" id="finish" style="margin-top:12px" hidden>✅ ภาพครบแล้ว</button>
+</div>
+
+<div class="card" id="listCard" hidden>
+  <div style="font-weight:700;margin-bottom:8px">ไฟล์ที่อัปโหลดแล้ว (<span id="cnt">0</span>)</div>
+  <div class="thumbs" id="thumbs"></div>
+</div>
+
+<div class="card" id="outCard" hidden>
+  <div class="step">ตรวจสอบและนำส่ง</div>
+  <label>ชื่อไฟล์ที่จะบันทึก</label>
+  <div id="fnameShow" style="font-weight:600;word-break:break-all"></div>
+  <div class="hint" style="margin-top:6px" id="sumTxt"></div>
+  <div class="row">
+    <button class="sec" id="back">← กลับไปเพิ่มภาพ</button>
+    <button id="make">📨 นำส่งรายงาน</button>
+  </div>
+  <div class="msg" id="outMsg"></div>
+</div>
+</main>
+
+<dialog id="dlg">
+  <div class="big" id="dlgIco">✅</div>
+  <h2 id="dlgTxt"></h2>
+  <div class="msg" id="dlgSub" style="margin-bottom:14px"></div>
+  <button id="dlgOk">ตกลง</button>
+</dialog>
+
+<script>
+/* ---------- ข้อมูลสำรอง (จาก data/contacts.xlsx) ---------- */
+let ROWS=[{"a": "ศูนย์อนามัยที่ 1 เชียงใหม่", "p": "เชียงใหม่", "s": ""}, {"a": "ศูนย์อนามัยที่ 2 พิษณุโลก", "p": "พิษณุโลก", "s": ""}, {"a": "ศูนย์อนามัยที่ 3 นครสวรรค์", "p": "นครสวรรค์", "s": ""}, {"a": "ศูนย์อนามัยที่ 4 สระบุรี", "p": "สระบุรี", "s": ""}, {"a": "ศูนย์อนามัยที่ 5 ราชบุรี", "p": "ราชบุรี", "s": ""}, {"a": "ศูนย์อนามัยที่ 6 ชลบุรี", "p": "ชลบุรี", "s": ""}, {"a": "ศูนย์อนามัยที่ 7 ขอนแก่น", "p": "ขอนแก่น", "s": ""}, {"a": "ศูนย์อนามัยที่ 8 อุดรธานี", "p": "อุดรธานี", "s": ""}, {"a": "ศูนย์อนามัยที่ 9 นครราชสีมา", "p": "นครราชสีมา", "s": ""}, {"a": "ศูนย์อนามัยที่ 10 อุบลราชธานี", "p": "อุบลราชธานี", "s": ""}, {"a": "ศูนย์อนามัยที่ 11 นครศรีธรรมราช", "p": "นครราชศรีธรรมราช", "s": ""}, {"a": "ศูนย์อนามัยที่ 12 ยะลา", "p": "ยะลา", "s": ""}, {"a": "ศูนย์อนามัยกลุ่มชาติพันธุ์ ชายขอบและแรงงานข้ามชาติ", "p": "ลำปาง", "s": ""}, {"a": "ศูนย์ทันตสาธารณสุขระหว่างประเทศ", "p": "เชียงใหม่", "s": ""}];
+const XLSX_PATH="data/contacts.xlsx", OUT_DIR="รายงานส่งมอบ", COL_AGENCY=6, COL_PROV=7, COL_STATUS=14;
+
+const $=id=>document.getElementById(id);
+
+/* ---------- ตั้งค่า GitHub (ผู้ดูแลแก้ตรงนี้ครั้งเดียว) ---------- */
+const GH_OWNER="YOUR_GITHUB_USERNAME";      // ชื่อบัญชี/องค์กร GitHub
+const GH_REPO="YOUR_REPO_NAME";             // ชื่อ repo
+const GH_BRANCH="main";
+const GH_TOKEN="PASTE_FINE_GRAINED_TOKEN";  // สิทธิ์ Contents: Read and write เฉพาะ repo นี้
+function cfg(){return{owner:GH_OWNER,repo:GH_REPO,branch:GH_BRANCH,token:GH_TOKEN};}
+const cfgOk=()=>!/^(YOUR_|PASTE_)/.test(GH_OWNER+GH_REPO+GH_TOKEN);
+
+/* ---------- GitHub API ---------- */
+const enc=p=>p.split("/").map(encodeURIComponent).join("/");
+async function gh(method,path,body){
+  const c=cfg();
+  const r=await fetch(`https://api.github.com/repos/${c.owner}/${c.repo}/contents/${enc(path)}`+(method==="GET"?`?ref=${encodeURIComponent(c.branch)}`:""),{
+    method,headers:{Authorization:"Bearer "+c.token,Accept:"application/vnd.github+json","Content-Type":"application/json"},
+    body:body?JSON.stringify({...body,branch:c.branch}):undefined});
+  if(r.status===404&&method==="GET")return null;
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok){const e=new Error(j.message||("HTTP "+r.status));e.status=r.status;throw e;}
+  return j;
+}
+const b64ToBytes=s=>Uint8Array.from(atob(s.replace(/\s/g,"")),ch=>ch.charCodeAt(0));
+function bytesToB64(u8){let s="";for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));return btoa(s);}
+const blobToB64=b=>new Promise((res,rej)=>{const f=new FileReader();f.onload=()=>res(f.result.split(",")[1]);f.onerror=rej;f.readAsDataURL(b);});
+
+/* ---------- รายชื่อหน่วยงาน ---------- */
+async function rowsFromBuffer(buf){
+  const wb=new ExcelJS.Workbook();await wb.xlsx.load(buf);const ws=wb.worksheets[0],out=[];
+  ws.eachRow((row,n)=>{if(n<3)return;const a=(row.getCell(COL_AGENCY).text||"").trim(),p=(row.getCell(COL_PROV).text||"").trim();
+    if(a&&p)out.push({a,p,s:(row.getCell(COL_STATUS).text||"").trim()});});
+  return out;
+}
+async function loadList(){
+  try{
+    let buf;const c=cfg();
+    if(cfgOk()){const j=await gh("GET",XLSX_PATH);if(j)buf=b64ToBytes(j.content).buffer;}
+    if(!buf){const r=await fetch(XLSX_PATH+"?t="+Date.now());if(r.ok)buf=await r.arrayBuffer();}
+    if(buf){const rows=await rowsFromBuffer(buf);if(rows.length)ROWS=rows;}
+  }catch(e){}
+  fillProv();
+}
+let sel={prov:"",agency:""};
+function fillProv(){
+  const keep=$("selProv").value,ps=[...new Set(ROWS.map(r=>r.p))];
+  $("selProv").innerHTML='<option value="">— เลือกจังหวัด —</option>'+ps.map(p=>`<option>${p}</option>`).join("");
+  if(ps.includes(keep))$("selProv").value=keep;fillAgency();
+}
+function fillAgency(){
+  const p=$("selProv").value,keep=$("selAgency").value,as=ROWS.filter(r=>r.p===p);
+  $("selAgency").disabled=!p;
+  $("selAgency").innerHTML='<option value="">— เลือกหน่วยงาน —</option>'+as.map(r=>`<option value="${r.a}">${r.a}${r.s?" (ส่งแล้ว)":""}</option>`).join("");
+  if(as.some(r=>r.a===keep))$("selAgency").value=keep;
+  if(as.length===1&&!keep)$("selAgency").value=as[0].a;
+  checkSel();
+}
+function checkSel(){
+  const r=ROWS.find(x=>x.p===$("selProv").value&&x.a===$("selAgency").value);
+  $("selNext").disabled=!r;
+  $("selMsg").className="msg";$("selMsg").textContent=r&&r.s?"หน่วยงานนี้เคยนำส่งแล้ว: "+r.s+" — หากนำส่งอีกครั้ง ไฟล์เดิมจะถูกแทนที่":"";
+}
+$("selProv").onchange=fillAgency;$("selAgency").onchange=checkSel;
+$("selNext").onclick=()=>{sel={prov:$("selProv").value,agency:$("selAgency").value};
+  $("chipTxt").textContent="หน่วยงาน: "+sel.agency+" ("+sel.prov+")";
+  $("chip").hidden=false;$("selCard").hidden=true;$("stepCard").hidden=false;render();};
+$("chipChg").onclick=()=>{if(items.length&&!confirm("เปลี่ยนหน่วยงานแล้วภาพที่อัปโหลดไว้จะถูกล้าง ต้องการดำเนินการต่อหรือไม่"))return;
+  items.length=0;$("chip").hidden=true;$("stepCard").hidden=true;$("outCard").hidden=true;$("listCard").hidden=true;$("selCard").hidden=false;checkSel();};
+
+/* ---------- อัปโหลดภาพตามขั้นตอน ---------- */
+const STEPS=[
+ {t:"ภาพที่ 1: แบบส่งมอบ/ตรวจรับบริการ",h:"ไฟล์ PDF หรือรูปภาพของแบบฟอร์มที่เซ็นแล้ว (ใช้หน้าแรกของ PDF)",pdf:true,req:true},
+ {t:"ภาพที่ 2: ภาพถ่ายอาคาร / สถานที่ติดตั้ง",h:"ภาพถ่ายหน้าอาคาร",req:true},
+ {t:"ภาพที่ 3: ภาพตู้ Rack อุปกรณ์",h:"ภาพถ่ายอุปกรณ์ในตู้ Rack",req:true},
+ {t:"ภาพที่ 4: อุปกรณ์ปลายทาง (ONU/Router) FTTx",h:"เช่น ONU Huawei พร้อมหมายเลขวงจร"},
+ {t:"ภาพที่ 5: อุปกรณ์ปลายทาง MPLS",h:"เช่น ONU Zhone พร้อมหมายเลขวงจร"},
+ {t:"ภาพที่ 6: ผลทดสอบความเร็ว MPLS",h:"ภาพหน้าจอ Speedtest ของ MPLS"},
+ {t:"ภาพที่ 7: ผลทดสอบความเร็ว FTTx",h:"ภาพหน้าจอ Speedtest ของ Internet (FTTx)"}
+];
+const MIN=3, items=[];
+pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+function stepInfo(i){return STEPS[i]||{t:"ภาพที่ "+(i+1)+": ภาพเพิ่มเติม",h:"ภาพเพิ่มเติม (ถ้ามี)"};}
+
+function render(){
+  const i=items.length, s=stepInfo(i);
+  $("stepTitle").textContent=s.t;
+  $("stepHint").innerHTML=(s.req?'<span class="req">* จำเป็น</span> · ':'ไม่บังคับ · ')+s.h;
+  $("acceptTxt").textContent=s.pdf?"รองรับ PDF, JPG, PNG":"รองรับ JPG, PNG";
+  $("file").accept=s.pdf?"application/pdf,image/*":"image/*";
+  $("barFill").style.width=Math.min(100,items.length/MIN*100)+"%";
+  $("finish").hidden=items.length<MIN;
+  $("listCard").hidden=!items.length;
+  $("cnt").textContent=items.length;
+  $("thumbs").innerHTML="";
+  items.forEach((it,k)=>{
+    const d=document.createElement("div");d.className="th";
+    const im=new Image();im.src=it.url;
+    const sp=document.createElement("span");sp.textContent="ภาพที่ "+(k+1)+(it.kind==="pdf"?" (PDF)":"");
+    const b=document.createElement("button");b.textContent="✕";b.title="ลบ";
+    b.onclick=()=>{items.splice(k,1);render();};
+    d.append(im,sp,b);$("thumbs").append(d);
+  });
+}
+function loadImg(src){return new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=rej;im.src=src;});}
+function toJpeg(src,w,h){
+  const m=1800,sc=Math.min(1,m/Math.max(w,h));
+  const c=document.createElement("canvas");c.width=Math.round(w*sc);c.height=Math.round(h*sc);
+  const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(src,0,0,c.width,c.height);
+  return {url:c.toDataURL("image/jpeg",.88),w:c.width,h:c.height};
+}
+async function fromFile(f){
+  if(f.type==="application/pdf"||/\.pdf$/i.test(f.name)){
+    const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
+    const pg=await pdf.getPage(1),vp=pg.getViewport({scale:2});
+    const c=document.createElement("canvas");c.width=vp.width;c.height=vp.height;
+    await pg.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;
+    return {...toJpeg(c,c.width,c.height),kind:"pdf"};
+  }
+  const bmp=await createImageBitmap(f,{imageOrientation:"from-image"}).catch(async()=>loadImg(URL.createObjectURL(f)));
+  return {...toJpeg(bmp,bmp.width,bmp.height),kind:"img"};
+}
+$("file").addEventListener("change",async e=>{
+  const f=e.target.files[0];e.target.value="";if(!f)return;
+  const st=$("status");st.className="msg";st.textContent="กำลังประมวลผล…";
+  try{
+    const isPdf=f.type==="application/pdf"||/\.pdf$/i.test(f.name);
+    if(isPdf&&items.length>0)throw new Error("PDF ใช้ได้เฉพาะภาพที่ 1 – ขั้นตอนนี้กรุณาเลือกรูปภาพ");
+    items.push(await fromFile(f));
+    st.className="msg ok";st.textContent="✓ เพิ่มภาพแล้ว";
+    render();
+  }catch(err){st.className="msg err";st.textContent="ผิดพลาด: "+(err.message||"อ่านไฟล์ไม่ได้");}
+});
+
+/* ---------- สรุป / ชื่อไฟล์ ---------- */
+const fileName=()=>("รายงานส่งมอบ "+sel.agency).replace(/[\\/:*?"<>|]/g,"-")+".pdf";
+function counts(){const p=items.filter(i=>i.kind==="pdf").length;return{p,i:items.length-p};}
+function statusText(){const c=counts();
+  return "ได้รับแล้ว ("+(c.p?"PDF "+c.p+" ไฟล์ + ":"")+"รูป "+c.i+" ภาพ รวม "+items.length+" ไฟล์)";}
+$("finish").onclick=()=>{$("stepCard").hidden=true;$("outCard").hidden=false;$("outMsg").textContent="";
+  $("fnameShow").textContent=OUT_DIR+"/"+fileName();$("sumTxt").textContent=statusText();pdfDone=false;};
+$("back").onclick=()=>{$("stepCard").hidden=false;$("outCard").hidden=true;};
+
+/* ---------- สร้าง PDF ---------- */
+function buildPdf(){
+  const {jsPDF}=window.jspdf, doc=new jsPDF({unit:"pt",format:"a4"});
+  const W=595.28,H=841.89;
+  const fit=(it,x,y,bw,bh)=>{const r=Math.min(bw/it.w,bh/it.h),w=it.w*r,h=it.h*r;doc.addImage(it.url,"JPEG",x+(bw-w)/2,y+(bh-h)/2,w,h,undefined,"FAST");};
+  fit(items[0],20,20,W-40,H-40);
+  const bw=W-80,bh=(H-100)/2;
+  for(let i=1;i<items.length;i+=2){
+    doc.addPage();
+    fit(items[i],40,30,bw,bh);
+    if(items[i+1])fit(items[i+1],40,30+bh+40,bw,bh);
+  }
+  return doc.output("blob");
+}
+
+/* ---------- นำส่งรายงาน ---------- */
+let pdfDone=false, sending=false;
+function showDlg(ico,txt,sub){$("dlgIco").textContent=ico;$("dlgTxt").textContent=txt;$("dlgSub").textContent=sub||"";$("dlg").showModal();}
+$("dlgOk").onclick=()=>{const ok=$("dlgIco").textContent==="✅";$("dlg").close();if(ok)location.reload();};
+
+async function savePdf(){
+  const path=OUT_DIR+"/"+fileName(), c=cfg();
+  const content=await blobToB64(buildPdf());
+  const old=await gh("GET",path);
+  await gh("PUT",path,{message:"ส่งรายงานส่งมอบ: "+sel.agency,content,...(old?{sha:old.sha}:{})});
+}
+async function updateExcel(){
+  for(let t=0;t<4;t++){
+    const j=await gh("GET",XLSX_PATH);
+    if(!j)throw new Error("ไม่พบไฟล์ "+XLSX_PATH+" ใน repo");
+    const wb=new ExcelJS.Workbook();await wb.xlsx.load(b64ToBytes(j.content).buffer);
+    const ws=wb.worksheets[0];let hit=0;
+    ws.eachRow((row,n)=>{if(n<3)return;
+      if((row.getCell(COL_AGENCY).text||"").trim()===sel.agency&&(row.getCell(COL_PROV).text||"").trim()===sel.prov){
+        row.getCell(COL_STATUS).value=statusText();row.commit();hit++;}});
+    if(!hit)throw new Error("ไม่พบหน่วยงานนี้ใน Excel");
+    const out=new Uint8Array(await wb.xlsx.writeBuffer());
+    try{await gh("PUT",XLSX_PATH,{message:"อัปเดตสถานะใบส่งมอบ: "+sel.agency,content:bytesToB64(out),sha:j.sha});return;}
+    catch(e){if((e.status===409||e.status===422)&&t<3)continue;throw e;} // มีคนแก้พร้อมกัน → ดึงใหม่แล้วลองอีกครั้ง
+  }
+}
+$("make").onclick=async()=>{
+  if(sending)return;
+  const m=$("outMsg"),c=cfg();m.className="msg";
+  if(!cfgOk()){m.className="msg err";m.textContent="ระบบยังตั้งค่าไม่เสร็จ กรุณาแจ้งผู้ดูแลระบบ";return;}
+  sending=true;$("make").disabled=true;
+  try{
+    if(!pdfDone){m.textContent="กำลังบันทึกไฟล์ PDF ลง GitHub…";await savePdf();pdfDone=true;}
+    m.textContent="กำลังอัปเดตสถานะในไฟล์ Excel…";
+    await updateExcel();
+    m.textContent="";
+    showDlg("✅","ส่งรายงานส่งมอบ ของ "+sel.agency+" เรียบร้อย",statusText());
+  }catch(err){
+    m.className="msg err";
+    const why=err.status===401||err.status===403?"ระบบนำส่งไม่พร้อมใช้งาน (สิทธิ์การเขียนไม่ถูกต้อง) กรุณาแจ้งผู้ดูแลระบบ":err.message;
+    m.textContent=(pdfDone?"บันทึก PDF แล้ว แต่อัปเดต Excel ไม่สำเร็จ – กด “นำส่งรายงาน” อีกครั้งเพื่อลองใหม่ · ":"นำส่งไม่สำเร็จ · ")+why;
+  }finally{sending=false;$("make").disabled=false;}
+};
+
+fillProv();loadList();
+</script>
+</body>
+</html>
