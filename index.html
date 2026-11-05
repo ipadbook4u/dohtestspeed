@@ -120,21 +120,15 @@ const XLSX_PATH="data/contacts.xlsx", OUT_DIR="รายงานส่งมอ
 
 const $=id=>document.getElementById(id);
 
-/* ---------- ตั้งค่า GitHub (ผู้ดูแลแก้ตรงนี้ครั้งเดียว) ---------- */
-const GH_OWNER="YOUR_GITHUB_USERNAME";      // ชื่อบัญชี/องค์กร GitHub
-const GH_REPO="YOUR_REPO_NAME";             // ชื่อ repo
-const GH_BRANCH="main";
-const GH_TOKEN="PASTE_FINE_GRAINED_TOKEN";  // สิทธิ์ Contents: Read and write เฉพาะ repo นี้
-function cfg(){return{owner:GH_OWNER,repo:GH_REPO,branch:GH_BRANCH,token:GH_TOKEN};}
-const cfgOk=()=>!/^(YOUR_|PASTE_)/.test(GH_OWNER+GH_REPO+GH_TOKEN);
+/* ---------- ตั้งค่า (ผู้ดูแลแก้ตรงนี้ครั้งเดียว) ---------- */
+const WORKER_URL="https://doh-handover.ipadbook4u.workers.dev"; // เช่น https://doh-handover.xxxx.workers.dev
+const cfgOk=()=>/^https:\/\//.test(WORKER_URL);
 
-/* ---------- GitHub API ---------- */
+/* ---------- เรียกผ่าน Worker (Worker เป็นผู้ถือ Token และเขียนลง GitHub) ---------- */
 const enc=p=>p.split("/").map(encodeURIComponent).join("/");
 async function gh(method,path,body){
-  const c=cfg();
-  const r=await fetch(`https://api.github.com/repos/${c.owner}/${c.repo}/contents/${enc(path)}`+(method==="GET"?`?ref=${encodeURIComponent(c.branch)}`:""),{
-    method,headers:{Authorization:"Bearer "+c.token,Accept:"application/vnd.github+json","Content-Type":"application/json"},
-    body:body?JSON.stringify({...body,branch:c.branch}):undefined});
+  const r=await fetch(WORKER_URL.replace(/\/$/,"")+"/contents/"+enc(path),{
+    method,headers:{"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined});
   if(r.status===404&&method==="GET")return null;
   const j=await r.json().catch(()=>({}));
   if(!r.ok){const e=new Error(j.message||("HTTP "+r.status));e.status=r.status;throw e;}
@@ -153,7 +147,7 @@ async function rowsFromBuffer(buf){
 }
 async function loadList(){
   try{
-    let buf;const c=cfg();
+    let buf;
     if(cfgOk()){const j=await gh("GET",XLSX_PATH);if(j)buf=b64ToBytes(j.content).buffer;}
     if(!buf){const r=await fetch(XLSX_PATH+"?t="+Date.now());if(r.ok)buf=await r.arrayBuffer();}
     if(buf){const rows=await rowsFromBuffer(buf);if(rows.length)ROWS=rows;}
@@ -280,7 +274,7 @@ function showDlg(ico,txt,sub){$("dlgIco").textContent=ico;$("dlgTxt").textConten
 $("dlgOk").onclick=()=>{const ok=$("dlgIco").textContent==="✅";$("dlg").close();if(ok)location.reload();};
 
 async function savePdf(){
-  const path=OUT_DIR+"/"+fileName(), c=cfg();
+  const path=OUT_DIR+"/"+fileName();
   const content=await blobToB64(buildPdf());
   const old=await gh("GET",path);
   await gh("PUT",path,{message:"ส่งรายงานส่งมอบ: "+sel.agency,content,...(old?{sha:old.sha}:{})});
@@ -302,7 +296,7 @@ async function updateExcel(){
 }
 $("make").onclick=async()=>{
   if(sending)return;
-  const m=$("outMsg"),c=cfg();m.className="msg";
+  const m=$("outMsg");m.className="msg";
   if(!cfgOk()){m.className="msg err";m.textContent="ระบบยังตั้งค่าไม่เสร็จ กรุณาแจ้งผู้ดูแลระบบ";return;}
   sending=true;$("make").disabled=true;
   try{
@@ -313,7 +307,7 @@ $("make").onclick=async()=>{
     showDlg("✅","ส่งรายงานส่งมอบ ของ "+sel.agency+" เรียบร้อย",statusText());
   }catch(err){
     m.className="msg err";
-    const why=err.status===401||err.status===403?"ระบบนำส่งไม่พร้อมใช้งาน (สิทธิ์การเขียนไม่ถูกต้อง) กรุณาแจ้งผู้ดูแลระบบ":err.message;
+    const why=err.status===401||err.status===403?"ระบบนำส่งไม่พร้อมใช้งาน กรุณาแจ้งผู้ดูแลระบบ":err.message;
     m.textContent=(pdfDone?"บันทึก PDF แล้ว แต่อัปเดต Excel ไม่สำเร็จ – กด “นำส่งรายงาน” อีกครั้งเพื่อลองใหม่ · ":"นำส่งไม่สำเร็จ · ")+why;
   }finally{sending=false;$("make").disabled=false;}
 };
