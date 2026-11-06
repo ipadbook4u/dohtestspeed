@@ -113,6 +113,13 @@ dialog h2{font-size:1.15rem;margin:8px 0}
   <button id="dlgOk">ตกลง</button>
 </dialog>
 
+<dialog id="dlg2">
+  <div class="big">💾</div>
+  <h2>คุณต้องการสำรองรายงานส่งมอบไว้ไหม</h2>
+  <div class="msg" id="dlg2Sub" style="margin-bottom:14px">ระบบจะดาวน์โหลดไฟล์ PDF ลงเครื่องของคุณ</div>
+  <div class="row"><button class="sec" id="dlg2No">ไม่ต้อง</button><button id="dlg2Yes">สำรองไฟล์</button></div>
+</dialog>
+
 <script>
 /* ---------- ข้อมูลสำรอง (จาก data/contacts.xlsx) ---------- */
 let ROWS=[{"a": "ศูนย์อนามัยที่ 1 เชียงใหม่", "p": "เชียงใหม่", "s": ""}, {"a": "ศูนย์อนามัยที่ 2 พิษณุโลก", "p": "พิษณุโลก", "s": ""}, {"a": "ศูนย์อนามัยที่ 3 นครสวรรค์", "p": "นครสวรรค์", "s": ""}, {"a": "ศูนย์อนามัยที่ 4 สระบุรี", "p": "สระบุรี", "s": ""}, {"a": "ศูนย์อนามัยที่ 5 ราชบุรี", "p": "ราชบุรี", "s": ""}, {"a": "ศูนย์อนามัยที่ 6 ชลบุรี", "p": "ชลบุรี", "s": ""}, {"a": "ศูนย์อนามัยที่ 7 ขอนแก่น", "p": "ขอนแก่น", "s": ""}, {"a": "ศูนย์อนามัยที่ 8 อุดรธานี", "p": "อุดรธานี", "s": ""}, {"a": "ศูนย์อนามัยที่ 9 นครราชสีมา", "p": "นครราชสีมา", "s": ""}, {"a": "ศูนย์อนามัยที่ 10 อุบลราชธานี", "p": "อุบลราชธานี", "s": ""}, {"a": "ศูนย์อนามัยที่ 11 นครศรีธรรมราช", "p": "นครราชศรีธรรมราช", "s": ""}, {"a": "ศูนย์อนามัยที่ 12 ยะลา", "p": "ยะลา", "s": ""}, {"a": "ศูนย์อนามัยกลุ่มชาติพันธุ์ ชายขอบและแรงงานข้ามชาติ", "p": "ลำปาง", "s": ""}, {"a": "ศูนย์ทันตสาธารณสุขระหว่างประเทศ", "p": "เชียงใหม่", "s": ""}];
@@ -269,13 +276,26 @@ function buildPdf(){
 }
 
 /* ---------- นำส่งรายงาน ---------- */
-let pdfDone=false, sending=false;
+let pdfDone=false, sending=false, lastBlob=null, lastName="";
 function showDlg(ico,txt,sub){$("dlgIco").textContent=ico;$("dlgTxt").textContent=txt;$("dlgSub").textContent=sub||"";$("dlg").showModal();}
-$("dlgOk").onclick=()=>{const ok=$("dlgIco").textContent==="✅";$("dlg").close();if(ok)location.reload();};
+$("dlgOk").onclick=()=>{const ok=$("dlgIco").textContent==="✅";$("dlg").close();
+  if(ok&&lastBlob)$("dlg2").showModal();else if(ok)location.reload();};
+$("dlg2No").onclick=()=>{$("dlg2").close();location.reload();};
+$("dlg2Yes").onclick=()=>{
+  try{
+    const u=URL.createObjectURL(lastBlob),a=document.createElement("a");
+    a.href=u;a.download=lastName;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(u),30000);
+    $("dlg2Sub").className="msg ok";$("dlg2Sub").textContent="ดาวน์โหลดไฟล์แล้ว กดตกลงเพื่อกลับหน้าแรก";
+    $("dlg2Yes").textContent="ตกลง";$("dlg2Yes").onclick=()=>{$("dlg2").close();location.reload();};
+    $("dlg2No").hidden=true;
+  }catch(e){$("dlg2Sub").className="msg err";$("dlg2Sub").textContent="ดาวน์โหลดไม่สำเร็จ: "+(e.message||e);}
+};
 
 async function savePdf(){
   const path=OUT_DIR+"/"+fileName();
-  const content=await blobToB64(buildPdf());
+  lastBlob=buildPdf();lastName=fileName();
+  const content=await blobToB64(lastBlob);
   const old=await gh("GET",path);
   await gh("PUT",path,{message:"ส่งรายงานส่งมอบ: "+sel.agency,content,...(old?{sha:old.sha}:{})});
 }
