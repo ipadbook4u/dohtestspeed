@@ -320,8 +320,8 @@ $("make").onclick=async()=>{
   if(!cfgOk()){m.className="msg err";m.textContent="ระบบยังตั้งค่าไม่เสร็จ กรุณาแจ้งผู้ดูแลระบบ";return;}
   sending=true;$("make").disabled=true;
   try{
-    if(!pdfDone){m.textContent="กำลังบันทึกไฟล์ PDF ลง GitHub…";await savePdf();pdfDone=true;}
-    m.textContent="กำลังอัปเดตสถานะในไฟล์ Excel…";
+    if(!pdfDone){m.textContent="กำลังบันทึกไฟล์ PDF ลง Server...";await savePdf();pdfDone=true;}
+    m.textContent="กำลังอัปเดตสถานะในฐานข้อมูล";
     await updateExcel();
     m.textContent="";
     showDlg("✅","ส่งรายงานส่งมอบ ของ "+sel.agency+" เรียบร้อย",statusText());
