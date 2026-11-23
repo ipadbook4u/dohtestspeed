@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Dashboard โครงการเช่าเชื่อมโยงเครือข่าย กรมอนามัย</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{color-scheme:light;--bg:#f5f6f8;--card:#fff;--tx:#1d2330;--mut:#667085;--bd:#d9dde5;--pri:#4b3fbf;--ok:#1f8a4c;--node:#eceafc;--nodebd:#4b3fbf;--center:#4b3fbf;--line:#b9b4ea;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -42,6 +43,11 @@ svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto}
 .f:first-of-type{border-top:0}
 .f span{display:block;font-size:.8rem;color:var(--mut)}
 .f div{word-break:break-word}
+.up{display:block;margin-top:12px;text-align:center;border:1px dashed var(--bd);border-radius:10px;padding:10px;cursor:pointer;color:var(--pri);font-weight:600}
+.up:hover{border-color:var(--pri)}
+.up input{display:none}
+#msg{font-size:.85rem;color:var(--mut);text-align:center;margin-top:6px}
+#msg.err{color:#c43d3d}
 </style>
 </head>
 <body>
@@ -52,6 +58,8 @@ svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto}
   <div class="ph"><span>สถานะใบส่งมอบ</span><span class="pct" id="pct">0%</span></div>
   <div class="bar"><i id="fill"></i></div>
   <div class="ph" style="margin-top:6px"><small id="cnt"></small></div>
+  <label class="up">📂 เลือกไฟล์ Excel เอง (กรณีโหลดอัตโนมัติไม่ได้)<input type="file" id="xl" accept=".xlsx,.xls"></label>
+  <div id="msg"></div>
 </div>
 
 <div class="card">
@@ -64,7 +72,7 @@ svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto}
 
 <script>
 // ข้อมูลจาก Excel: b=MPLS(B) d=FTTX(D) f=หน่วยงาน(F) g=จังหวัด(G) k=รายชื่อ NT(K) l=เบอร์โทร NT(L) n=สถานะใบส่งมอบ(N)
-const ROWS=[
+let ROWS=[
 {b:"GDI691182",d:"5328j0510",f:"ศูนย์อนามัยที่ 1 เชียงใหม่",g:"เชียงใหม่",k:"นายจักรภพ ท้วมวงศ์",l:"090-5060632",n:""},
 {b:"GDI691572",d:"5523j9433",f:"ศูนย์อนามัยที่ 2 พิษณุโลก",g:"พิษณุโลก",k:"นายภาณุภพ รัพย์สมบัติ , นายอุทิศ ม่อมละมูล",l:"081-2310813",n:""},
 {b:"GDI691573",d:"5621j4708",f:"ศูนย์อนามัยที่ 3 นครสวรรค์",g:"นครสวรรค์",k:"พี่บอล กำพล",l:"091-0984849,085-5785895",n:""},
@@ -75,7 +83,7 @@ const ROWS=[
 {b:"GDI691578",d:"4224j6848",f:"ศูนย์อนามัยที่ 8 อุดรธานี",g:"อุดรธานี",k:"นายรุ่งโรจน์ เจริญไชย\nนายสุรสิต ปิ่นเกษร",l:"0864643526\n0823111119",n:""},
 {b:"GDI691579",d:"4420j2934",f:"ศูนย์อนามัยที่ 9 นครราชสีมา",g:"นครราชสีมา",k:"นายเกรียงวุฒิ จรภักดี",l:"081-7606968",n:""},
 {b:"GDI691580",d:"4532j3844",f:"ศูนย์อนามัยที่ 10 อุบลราชธานี",g:"อุบลราชธานี",k:"พี่สังเวียน",l:"086-1688912",n:""},
-{b:"GDI691581",d:"7551j5620",f:"ศูนย์อนามัยที่ 11 นครศรีธรรมราช",g:"นครราชศรีธรรมราช",k:"นายพรรณิภา นิลอุบล",l:"086-4703734",n:""},
+{b:"GDI691581",d:"7551j5620",f:"ศูนย์อนามัยที่ 11 นครศรีธรรมราช",g:"นครศรีธรรมราช",k:"นายพรรณิภา นิลอุบล",l:"086-4703734",n:""},
 {b:"GDI691582",d:"7320j4034",f:"ศูนย์อนามัยที่ 12 ยะลา",g:"ยะลา",k:"นายธิบดี ศรีธรรมกุล",l:"081-4180031",n:""},
 {b:"GDI691584",d:"5422j8633",f:"ศูนย์อนามัยกลุ่มชาติพันธุ์ ชายขอบและแรงงานข้ามชาติ",g:"ลำปาง",k:"นายทิตินันท์",l:"081-2320005",n:""},
 {b:"GDI691585",d:"5328j0622",f:"ศูนย์ทันตสาธารณสุขระหว่างประเทศ",g:"เชียงใหม่",k:"นายจักรภพ ท้วมวงศ์",l:"090-5060632",n:""}
@@ -86,12 +94,16 @@ const el=(t,a,p)=>{const e=document.createElementNS(NS,t);for(const k in a)e.set
 const line1=s=>String(s||"").split(/\n/).map(x=>x.trim()).filter(Boolean).join(" , ");
 
 // Progress: แถวที่คอลัมน์ N มีข้อมูล / จำนวนแถวทั้งหมด
-const done=ROWS.filter(r=>String(r.n).trim()!=="").length,total=ROWS.length,pct=Math.round(done/total*100);
-$("pct").textContent=pct+"%";$("fill").style.width=pct+"%";
-$("cnt").textContent="ส่งมอบแล้ว "+done+" จาก "+total+" แห่ง";
+function updateProgress(){
+  const done=ROWS.filter(r=>String(r.n).trim()!=="").length,total=ROWS.length,pct=total?Math.round(done/total*100):0;
+  $("pct").textContent=pct+"%";$("fill").style.width=pct+"%";
+  $("cnt").textContent="ส่งมอบแล้ว "+done+" จาก "+total+" แห่ง";
+}
 
 // Graph
 const svg=$("map"),C=380,R=285,RN=52;
+function draw(){
+svg.innerHTML="";
 const nodes=ROWS.map((r,i)=>{const a=-Math.PI/2+i*2*Math.PI/ROWS.length;return{r,x:C+R*Math.cos(a),y:C+R*Math.sin(a)};});
 nodes.forEach(n=>el("line",{class:"line",x1:C,y1:C,x2:n.x,y2:n.y},svg));
 const hub=el("g",{class:"hub"},svg);
@@ -105,6 +117,42 @@ nodes.forEach((n,i)=>{
   g.addEventListener("click",()=>openCard(n.r));
   g.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openCard(n.r);}});
 });
+updateProgress();
+}
+draw();
+
+// ===== โหลดข้อมูลจาก Excel =====
+// ตำแหน่งไฟล์ Excel บน GitHub Pages (relative จาก Dashboard.html) — แก้ชื่อไฟล์ตรงนี้ได้
+const XLSX_PATH="data/contacts.xlsx";
+
+// หัวตารางแถว 2, ข้อมูลเริ่มแถว 3; คอลัมน์ B,D,F,G,K,L,N
+function parseWorkbook(buf){
+  const wb=XLSX.read(buf,{type:"array"});
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:"",raw:false}).slice(2);
+  const s=v=>String(v==null?"":v).trim();
+  const out=rows.filter(r=>s(r[5])||s(r[6])).map(r=>({b:s(r[1]),d:s(r[3]),f:s(r[5]),g:s(r[6]).replace("นครราชศรีธรรมราช","นครศรีธรรมราช"),k:s(r[10]),l:s(r[11]),n:s(r[13])}));
+  if(!out.length)throw new Error("ไม่พบข้อมูลในไฟล์");
+  return out;
+}
+async function loadFromRepo(){
+  const m=$("msg");m.className="";m.textContent="กำลังโหลดข้อมูลจาก Excel…";
+  try{
+    const res=await fetch(encodeURI(XLSX_PATH)+"?t="+Date.now(),{cache:"no-store"});
+    if(!res.ok)throw new Error("HTTP "+res.status);
+    ROWS=parseWorkbook(await res.arrayBuffer());draw();
+    m.textContent="✓ โหลดข้อมูลจาก "+XLSX_PATH+" แล้ว ("+ROWS.length+" แถว)";
+  }catch(err){
+    m.className="err";
+    m.textContent="โหลดไฟล์ "+XLSX_PATH+" ไม่สำเร็จ ("+(err.message||err)+") – แสดงข้อมูลสำรอง หรืออัปโหลดไฟล์ด้วยตนเอง";
+  }
+}
+$("xl").addEventListener("change",async e=>{
+  const f=e.target.files[0];e.target.value="";if(!f)return;
+  const m=$("msg");m.className="";m.textContent="กำลังอ่านไฟล์…";
+  try{ROWS=parseWorkbook(await f.arrayBuffer());draw();m.textContent="✓ โหลดข้อมูลจาก "+f.name+" แล้ว ("+ROWS.length+" แถว)";}
+  catch(err){m.className="err";m.textContent="ผิดพลาด: "+(err.message||"อ่านไฟล์ไม่ได้");}
+});
+loadFromRepo();
 
 // Card
 function openCard(r){
