@@ -181,7 +181,7 @@ function fillAgency(){
 function checkSel(){
   const r=ROWS.find(x=>x.p===$("selProv").value&&x.a===$("selAgency").value);
   $("selNext").disabled=!r;
-  $("selMsg").className="msg";$("selMsg").textContent=r&&r.s?"หน่วยงานนี้เคยนำส่งแล้ว: "+r.s+" — หากนำส่งอีกครั้ง ไฟล์เดิมจะถูกแทนที่":"";
+  $("selMsg").className="msg";$("selMsg").textContent=r&&r.s?"หน่วยงานนี้เคยนำส่งแล้ว — หากนำส่งอีกครั้ง ไฟล์เดิมจะถูกแทนที่":"";
 }
 $("selProv").onchange=fillAgency;$("selAgency").onchange=checkSel;
 $("selNext").onclick=()=>{sel={prov:$("selProv").value,agency:$("selAgency").value};
@@ -208,8 +208,8 @@ function render(){
   const i=items.length, s=stepInfo(i);
   $("stepTitle").textContent=s.t;
   $("stepHint").innerHTML=(s.req?'<span class="req">* จำเป็น</span> · ':'ไม่บังคับ · ')+s.h;
-  $("acceptTxt").textContent=s.pdf?"รองรับ PDF, JPG, PNG":"รองรับ JPG, PNG";
-  $("file").accept=s.pdf?"application/pdf,image/*":"image/*";
+  $("acceptTxt").textContent="รองรับ PDF (ใช้หน้าแรก), JPG, PNG";
+  $("file").accept="application/pdf,image/*";
   $("barFill").style.width=Math.min(100,items.length/MIN*100)+"%";
   $("finish").hidden=items.length<MIN;
   $("listCard").hidden=!items.length;
@@ -246,8 +246,6 @@ $("file").addEventListener("change",async e=>{
   const f=e.target.files[0];e.target.value="";if(!f)return;
   const st=$("status");st.className="msg";st.textContent="กำลังประมวลผล…";
   try{
-    const isPdf=f.type==="application/pdf"||/\.pdf$/i.test(f.name);
-    if(isPdf&&items.length>0)throw new Error("PDF ใช้ได้เฉพาะภาพที่ 1 – ขั้นตอนนี้กรุณาเลือกรูปภาพ");
     items.push(await fromFile(f));
     st.className="msg ok";st.textContent="✓ เพิ่มภาพแล้ว";
     render();
@@ -257,10 +255,10 @@ $("file").addEventListener("change",async e=>{
 /* ---------- สรุป / ชื่อไฟล์ ---------- */
 const fileName=()=>("รายงานส่งมอบ "+sel.agency).replace(/[\\/:*?"<>|]/g,"-")+".pdf";
 function counts(){const p=items.filter(i=>i.kind==="pdf").length;return{p,i:items.length-p};}
-function statusText(){const c=counts();
-  return "ส่งแล้ว ("+(c.p?"PDF "+c.p+" ไฟล์ + ":"")+"รูป "+c.i+" ภาพ รวม "+items.length+" ไฟล์)";}
+const statusText=()=>"ส่งแล้ว";
+function summaryText(){const c=counts();return "จำนวนไฟล์ที่ส่ง: "+(c.p?"PDF "+c.p+" ไฟล์ + ":"")+"รูป "+c.i+" ภาพ (รวม "+items.length+" ไฟล์)";}
 $("finish").onclick=()=>{$("stepCard").hidden=true;$("outCard").hidden=false;$("outMsg").textContent="";
-  $("fnameShow").textContent=OUT_DIR+"/"+fileName();$("sumTxt").textContent=statusText();pdfDone=false;};
+  $("fnameShow").textContent=OUT_DIR+"/"+fileName();$("sumTxt").textContent=summaryText();pdfDone=false;};
 $("back").onclick=()=>{$("stepCard").hidden=false;$("outCard").hidden=true;};
 
 /* ---------- สร้าง PDF ---------- */
@@ -338,7 +336,7 @@ $("make").onclick=async()=>{
     m.textContent="กำลังอัปเดตสถานะในไฟล์ Excel…";
     await updateExcel();
     m.textContent="";
-    showDlg("✅","ส่งรายงานส่งมอบ ของ "+sel.agency+" เรียบร้อย",statusText());
+    showDlg("✅","ส่งรายงานส่งมอบ ของ "+sel.agency+" เรียบร้อย",summaryText());
   }catch(err){
     m.className="msg err";
     const why=err.status===401||err.status===403?"ระบบนำส่งไม่พร้อมใช้งาน กรุณาแจ้งผู้ดูแลระบบ":err.message;
