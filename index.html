@@ -68,6 +68,7 @@ dialog h2{font-size:1.15rem;margin:8px 0}
   <select id="selProv"></select>
   <label for="selAgency">หน่วยงาน <span class="req">*</span></label>
   <select id="selAgency" disabled></select>
+  <div class="msg err" id="listWarn" hidden></div>
   <div class="msg" id="selMsg"></div>
   <button id="selNext" style="margin-top:12px" disabled>ถัดไป: อัปโหลดภาพ</button>
 </div>
@@ -126,6 +127,7 @@ let ROWS=[{"a": "ศูนย์อนามัยที่ 1 เชียงใ
 const XLSX_PATH="data/contacts.xlsx", OUT_DIR="รายงานส่งมอบ", COL_AGENCY=6, COL_PROV=7, COL_STATUS=14;
 
 const $=id=>document.getElementById(id);
+const nz=s=>String(s==null?"":s).replace(/[\u200b\u00a0]/g," ").replace(/\s+/g," ").trim();
 
 /* ---------- ตั้งค่า (ผู้ดูแลแก้ตรงนี้ครั้งเดียว) ---------- */
 const WORKER_URL="https://doh-handover.ipadbook4u.workers.dev"; // เช่น https://doh-handover.xxxx.workers.dev
@@ -148,8 +150,8 @@ const blobToB64=b=>new Promise((res,rej)=>{const f=new FileReader();f.onload=()=
 /* ---------- รายชื่อหน่วยงาน ---------- */
 async function rowsFromBuffer(buf){
   const wb=new ExcelJS.Workbook();await wb.xlsx.load(buf);const ws=wb.worksheets[0],out=[];
-  ws.eachRow((row,n)=>{if(n<3)return;const a=(row.getCell(COL_AGENCY).text||"").trim(),p=(row.getCell(COL_PROV).text||"").trim();
-    if(a&&p)out.push({a,p,s:(row.getCell(COL_STATUS).text||"").trim()});});
+  ws.eachRow((row,n)=>{if(n<3)return;const a=nz(row.getCell(COL_AGENCY).text),p=nz(row.getCell(COL_PROV).text);
+    if(a&&p)out.push({a,p,s:nz(row.getCell(COL_STATUS).text)});});
   return out;
 }
 async function loadList(){
@@ -158,7 +160,8 @@ async function loadList(){
     if(cfgOk()){const j=await gh("GET",XLSX_PATH);if(j)buf=b64ToBytes(j.content).buffer;}
     if(!buf){const r=await fetch(XLSX_PATH+"?t="+Date.now());if(r.ok)buf=await r.arrayBuffer();}
     if(buf){const rows=await rowsFromBuffer(buf);if(rows.length)ROWS=rows;}
-  }catch(e){}
+    $("listWarn").hidden=true;
+  }catch(e){$("listWarn").hidden=false;$("listWarn").textContent="⚠ โหลดรายชื่อล่าสุดจากระบบไม่ได้ ใช้รายชื่อสำรองแทน ("+(e.message||e)+")";}
   fillProv();
 }
 let sel={prov:"",agency:""};
@@ -255,7 +258,7 @@ $("file").addEventListener("change",async e=>{
 const fileName=()=>("รายงานส่งมอบ "+sel.agency).replace(/[\\/:*?"<>|]/g,"-")+".pdf";
 function counts(){const p=items.filter(i=>i.kind==="pdf").length;return{p,i:items.length-p};}
 function statusText(){const c=counts();
-  return "ได้รับแล้ว ("+(c.p?"PDF "+c.p+" ไฟล์ + ":"")+"รูป "+c.i+" ภาพ รวม "+items.length+" ไฟล์)";}
+  return "ส่งแล้ว ("+(c.p?"PDF "+c.p+" ไฟล์ + ":"")+"รูป "+c.i+" ภาพ รวม "+items.length+" ไฟล์)";}
 $("finish").onclick=()=>{$("stepCard").hidden=true;$("outCard").hidden=false;$("outMsg").textContent="";
   $("fnameShow").textContent=OUT_DIR+"/"+fileName();$("sumTxt").textContent=statusText();pdfDone=false;};
 $("back").onclick=()=>{$("stepCard").hidden=false;$("outCard").hidden=true;};
@@ -299,19 +302,30 @@ async function savePdf(){
   const old=await gh("GET",path);
   await gh("PUT",path,{message:"ส่งรายงานส่งมอบ: "+sel.agency,content,...(old?{sha:old.sha}:{})});
 }
+async function readStatus(){
+  const j=await gh("GET",XLSX_PATH);if(!j)return null;
+  const wb=new ExcelJS.Workbook();await wb.xlsx.load(b64ToBytes(j.content).buffer);
+  let v=null;wb.worksheets[0].eachRow((row,n)=>{if(n<3)return;
+    if(nz(row.getCell(COL_AGENCY).text)===sel.agency&&nz(row.getCell(COL_PROV).text)===sel.prov)v=nz(row.getCell(COL_STATUS).text);});
+  return v;
+}
 async function updateExcel(){
+  const want=statusText();
   for(let t=0;t<4;t++){
     const j=await gh("GET",XLSX_PATH);
     if(!j)throw new Error("ไม่พบไฟล์ "+XLSX_PATH+" ใน repo");
     const wb=new ExcelJS.Workbook();await wb.xlsx.load(b64ToBytes(j.content).buffer);
     const ws=wb.worksheets[0];let hit=0;
     ws.eachRow((row,n)=>{if(n<3)return;
-      if((row.getCell(COL_AGENCY).text||"").trim()===sel.agency&&(row.getCell(COL_PROV).text||"").trim()===sel.prov){
-        row.getCell(COL_STATUS).value=statusText();row.commit();hit++;}});
-    if(!hit)throw new Error("ไม่พบหน่วยงานนี้ใน Excel");
+      if(nz(row.getCell(COL_AGENCY).text)===sel.agency&&nz(row.getCell(COL_PROV).text)===sel.prov){
+        row.getCell(COL_STATUS).value=want;hit++;}});
+    if(!hit)throw new Error("ไม่พบ “"+sel.agency+"” ในไฟล์ Excel บน GitHub (ชื่อหน่วยงานหรือจังหวัดอาจไม่ตรงกัน)");
     const out=new Uint8Array(await wb.xlsx.writeBuffer());
-    try{await gh("PUT",XLSX_PATH,{message:"อัปเดตสถานะใบส่งมอบ: "+sel.agency,content:bytesToB64(out),sha:j.sha});return;}
+    try{await gh("PUT",XLSX_PATH,{message:"อัปเดตสถานะใบส่งมอบ: "+sel.agency,content:bytesToB64(out),sha:j.sha});}
     catch(e){if((e.status===409||e.status===422)&&t<3)continue;throw e;} // มีคนแก้พร้อมกัน → ดึงใหม่แล้วลองอีกครั้ง
+    const got=await readStatus(); // ตรวจซ้ำว่าเขียนลง Excel จริง
+    if(got!==want)throw new Error("เขียนไฟล์ Excel แล้วแต่ตรวจสอบไม่พบสถานะใหม่ในช่อง สถานะใบส่งมอบ");
+    return;
   }
 }
 $("make").onclick=async()=>{
@@ -320,8 +334,8 @@ $("make").onclick=async()=>{
   if(!cfgOk()){m.className="msg err";m.textContent="ระบบยังตั้งค่าไม่เสร็จ กรุณาแจ้งผู้ดูแลระบบ";return;}
   sending=true;$("make").disabled=true;
   try{
-    if(!pdfDone){m.textContent="กำลังบันทึกไฟล์ PDF ลง Server...";await savePdf();pdfDone=true;}
-    m.textContent="กำลังอัปเดตสถานะในฐานข้อมูล";
+    if(!pdfDone){m.textContent="กำลังบันทึกไฟล์ PDF ลง GitHub…";await savePdf();pdfDone=true;}
+    m.textContent="กำลังอัปเดตสถานะในไฟล์ Excel…";
     await updateExcel();
     m.textContent="";
     showDlg("✅","ส่งรายงานส่งมอบ ของ "+sel.agency+" เรียบร้อย",statusText());
